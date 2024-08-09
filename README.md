@@ -75,12 +75,6 @@ TODO
 
 ## Database
 
-### Use old database dump
-
-- download the database dump from [gitlab](https://gitlab.sandstorm.de/cleema.app/cleema-app-documents) 
-- decrypt the file as described in readme https://gitlab.sandstorm.de/cleema-app/cleema-app-documents#produktiver-datenbank-dump 
-- save the result in `/DBDumps/cleema.sql`
-- run `dev resetDB`
 
 #### Manual
 * Connect to the Database (required variables in .env)
@@ -98,10 +92,6 @@ Note that you should still run `dev migrate` once AFTER running `dev seed`.
 To create Development Admin Users, run `dev seedDev`.
 
 Alternatively, can now also use `dev resetDB` to reset the Database aka. wipe, migrate, seed and seedDev the DB.
-
-### Get old fileuploads (pictures)
-* Not in gitlab
-* Ask Johannes, Justin or Max, they can send it to you
 
 ### Workflow
 
@@ -184,9 +174,7 @@ Now staging should be running at https://cleema-staging.cloud.sandstorm.de/admin
 - help:
   - https://laravel.com/docs/10.x/scheduling#running-the-scheduler
   - https://stackoverflow.com/questions/67795649/how-can-i-configure-supervisor-and-scheduling-with-laravel-sail
-  - we already did that by using supercronic: 
-    - https://gitlab.sandstorm.de/die-gruenen/die-gruenen-land-sachsenanhalt-relaunch-code/-/blob/main/deployment/production/entrypoint.sh
-    
+  
 
 
 
