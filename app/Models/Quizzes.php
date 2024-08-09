@@ -2,24 +2,46 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 /**
  * @property int      $id
  * @property int      $created_by_id
  * @property int      $updated_by_id
- * @property string   $correct_answer
- * @property string   $explanation
- * @property string   $locale
- * @property string   $question
  * @property string   $uuid
  * @property DateTime $created_at
  * @property DateTime $published_at
  * @property DateTime $updated_at
  * @property Date     $date
+ * @property string   $quiz_question_id
  */
 class Quizzes extends Model
 {
+    use HasFactory;
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        // We use the "date" in the API to determine which Quiz is the one to be displayed, because published_at
+        // also saves the time of day. In case we need published_at again in the future, we make sure published_at and
+        // date always align, we set them here
+        self::creating(function ($quizzes) {
+            $quizzes->uuid = Str::uuid();
+            $quizzes->created_by_id = auth()->id();
+            $quizzes->published_at = $quizzes->date;
+        });
+
+        self::saving(function ($quizzes) {
+            $quizzes->updated_by_id = auth()->id();
+            $quizzes->published_at = $quizzes->date;
+        });
+    }
+
     /**
      * The database table used by the model.
      *
@@ -40,7 +62,14 @@ class Quizzes extends Model
      * @var array
      */
     protected $fillable = [
-        'correct_answer', 'created_at', 'created_by_id', 'date', 'explanation', 'locale', 'published_at', 'question', 'updated_at', 'updated_by_id', 'uuid'
+        'created_at',
+        'created_by_id',
+        'date',
+        'published_at',
+        'updated_at',
+        'updated_by_id',
+        'uuid',
+        'quiz_question_id'
     ];
 
     /**
@@ -49,7 +78,7 @@ class Quizzes extends Model
      * @var array
      */
     protected $hidden = [
-        
+
     ];
 
     /**
@@ -58,7 +87,15 @@ class Quizzes extends Model
      * @var array
      */
     protected $casts = [
-        'id' => 'int', 'correct_answer' => 'string', 'created_at' => 'datetime', 'created_by_id' => 'int', 'date' => 'date', 'explanation' => 'string', 'locale' => 'string', 'published_at' => 'datetime', 'question' => 'string', 'updated_at' => 'datetime', 'updated_by_id' => 'int', 'uuid' => 'string'
+        'id' => 'int',
+        'created_at' => 'datetime',
+        'created_by_id' => 'int',
+        'date' => 'date',
+        'published_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'updated_by_id' => 'int',
+        'uuid' => 'string',
+        'quiz_question_id' => 'int'
     ];
 
     /**
@@ -75,11 +112,15 @@ class Quizzes extends Model
      *
      * @var boolean
      */
-    public $timestamps = false;
+    public $timestamps = true;
 
-    // Scopes...
+    public function responses()
+    {
+        return $this->belongsToMany(UpUsers::class, 'quiz_responses_v2','quiz_id', 'user_id')->withPivot(['answer', 'date']);
+    }
 
-    // Functions ...
-
-    // Relations ...
+    public function quizQuestion ()
+    {
+        return $this->belongsTo(QuizQuestions::class, 'quiz_question_id', 'id');
+    }
 }

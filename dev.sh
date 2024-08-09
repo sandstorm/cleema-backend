@@ -16,13 +16,20 @@ set -e
 function setup(){
     composer install
     npm install
-   vendor/bin/sail build
-
+    vendor/bin/sail build
+    dev linkStorage
 }
 
 function start(){
     vendor/bin/sail up -d
-    dev migrate
+}
+
+function seed(){
+    vendor/bin/sail artisan db:seed --class=DatabaseSeeder
+}
+
+function seedDev(){
+    vendor/bin/sail artisan db:seed --class=DevelopmentSeeder
 }
 
 function migrate(){
@@ -35,6 +42,26 @@ function stop(){
 
 function down(){
     vendor/bin/sail down
+}
+
+function test() {
+    vendor/bin/sail artisan test $1 $2 $3 $4
+}
+
+function linkStorage() {
+    vendor/bin/sail artisan storage:link
+}
+
+function restart(){
+    dev down
+    dev start
+}
+
+function resetDB() {
+    vendor/bin/sail artisan db:wipe
+    dev migrate
+    dev seed
+    dev seedDev
 }
 
 # THIS NEEDS TO BE LAST!!!

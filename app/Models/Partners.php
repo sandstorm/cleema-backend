@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * @property int      $id
@@ -18,6 +21,22 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Partners extends Model
 {
+    use HasFactory;
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        self::creating(function ($newsEntry) {
+            $newsEntry->uuid = Str::uuid();
+            $newsEntry->created_by_id = auth()->id();
+        });
+
+        self::saving(function ($newsEntry) {
+            $newsEntry->updated_by_id = auth()->id();
+        });
+    }
+
     /**
      * The database table used by the model.
      *
@@ -47,7 +66,7 @@ class Partners extends Model
      * @var array
      */
     protected $hidden = [
-        
+
     ];
 
     /**
@@ -73,11 +92,29 @@ class Partners extends Model
      *
      * @var boolean
      */
-    public $timestamps = false;
+    public $timestamps = true;
 
-    // Scopes...
+    /**
+     * define relation between partners and their challenges
+     * @return HasMany
+     */
+    public function challenges ()
+    {
+        return $this->hasMany(Challenges::class, 'partner_id', 'id');
+    }
 
-    // Functions ...
+    public function projects ()
+    {
+        return $this->hasMany(Projects::class, 'partner_id', 'id');
+    }
 
-    // Relations ...
+    public function challenge_templates()
+    {
+        return $this->hasMany(ChallengeTemplates::class, 'partner_id', 'id');
+    }
+
+    public function logo ()
+    {
+        return $this->belongsTo(Files::class, 'logo_id', 'id');
+    }
 }

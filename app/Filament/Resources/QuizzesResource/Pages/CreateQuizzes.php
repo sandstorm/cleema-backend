@@ -9,4 +9,9 @@ use Filament\Resources\Pages\CreateRecord;
 class CreateQuizzes extends CreateRecord
 {
     protected static string $resource = QuizzesResource::class;
+
+    protected function getCreatedNotification(): ?\Filament\Notifications\Notification
+    {
+        return \Filament\Notifications\Notification::make()->title('Quiz created');
+    }
 }

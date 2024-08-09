@@ -2,7 +2,11 @@
 
 namespace App\Models;
 
+use App\Filament\Resources\RegionsResource\RelationManagers\NewsEntriesRelationManager;
+use DateTime;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 /**
  * @property int      $id
@@ -17,6 +21,22 @@ use Illuminate\Database\Eloquent\Model;
  */
 class NewsTags extends Model
 {
+    use HasFactory;
+    public static function boot(): void
+    {
+        parent::boot();
+
+        self::creating(function ($newsEntry) {
+            $newsEntry->uuid = Str::uuid();
+            $newsEntry->created_by_id = auth()->id();
+            if ($newsEntry->locale == null) $newsEntry->locale = "de-DE";
+        });
+
+        self::saving(function ($newsEntry) {
+            $newsEntry->updated_by_id = auth()->id();
+        });
+    }
+
     /**
      * The database table used by the model.
      *
@@ -46,7 +66,7 @@ class NewsTags extends Model
      * @var array
      */
     protected $hidden = [
-        
+
     ];
 
     /**
@@ -72,11 +92,10 @@ class NewsTags extends Model
      *
      * @var boolean
      */
-    public $timestamps = false;
+    public $timestamps = true;
 
-    // Scopes...
-
-    // Functions ...
-
-    // Relations ...
+    public function newsEntries ()
+    {
+        return $this->belongsToMany(NewsEntries::class, 'news_entries_tags_links', 'news_tag_id', 'news_entry_id');
+    }
 }

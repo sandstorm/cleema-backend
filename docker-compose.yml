@@ -19,6 +19,7 @@ services:
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
         volumes:
             - '.:/var/www/html'
+            - laravel_storage:/storage
         networks:
             - sail
         depends_on:
@@ -100,6 +101,32 @@ services:
             - '/dev/shm:/dev/shm'
         networks:
             - sail
+    mitmproxy:
+        container_name: mitmproxy
+        image: mitmproxy/mitmproxy:10.2.1
+        tty: true
+        stdin_open: true
+        ports:
+            # mitmproxy web interface
+            - "8090:8081"
+            - "8080:8080"
+        volumes:
+            - 'mitmproxy:/home/mitmproxy/.mitmproxy'
+        command: mitmweb --web-host 0.0.0.0 --mode reverse:http://laravel.test --set keep_host_header=true
+        networks:
+            - sail
+    mitmproxy_phone:
+        container_name: mitmproxy_phone
+        image: mitmproxy/mitmproxy:10.2.1
+        tty: true
+        stdin_open: true
+        ports:
+            # mitmproxy web interface
+            - "8091:8081"
+            - "51820:51820/udp"
+        volumes:
+            - 'mitmproxy:/home/mitmproxy/.mitmproxy'
+        command: mitmweb --web-host 0.0.0.0 --mode wireguard
 networks:
     sail:
         driver: bridge
@@ -110,3 +137,6 @@ volumes:
         driver: local
     sail-meilisearch:
         driver: local
+    mitmproxy:
+        driver: local
+    laravel_storage:

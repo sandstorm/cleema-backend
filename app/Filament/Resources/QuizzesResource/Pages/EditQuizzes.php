@@ -16,4 +16,9 @@ class EditQuizzes extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function getSavedNotification(): ?\Filament\Notifications\Notification
+    {
+        return \Filament\Notifications\Notification::make()->title('Quiz updated');
+    }
 }

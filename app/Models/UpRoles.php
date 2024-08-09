@@ -45,7 +45,7 @@ class UpRoles extends Model
      * @var array
      */
     protected $hidden = [
-        
+
     ];
 
     /**
@@ -78,4 +78,9 @@ class UpRoles extends Model
     // Functions ...
 
     // Relations ...
+
+    public function users ()
+    {
+        return $this->hasMany(UpUsers::class, 'role_id', 'id');
+    }
 }

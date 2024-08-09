@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use Filament\Models\Contracts\FilamentUser;
 use Filament\Models\Contracts\HasName;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Traits\HasRoles;
 
 /**
  * @property int      $id
@@ -26,9 +30,29 @@ use Laravel\Sanctum\HasApiTokens;
  * @property string   $reset_password_token
  * @property string   $username
  */
-class AdminUsers extends Authenticatable implements HasName
+class AdminUsers extends Authenticatable implements HasName, FilamentUser
 {
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable, HasRoles;
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        self::creating(function ($adminUser) {
+            $adminUser->created_by_id = auth()->id();
+        });
+
+        self::saving(function ($adminUser) {
+            $adminUser->updated_by_id = auth()->id();
+        });
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        // return str_ends_with($this->email, '') && $this->hasVerifiedEmail();
+        return true;
+    }
+
     /**
      * The database table used by the model.
      *
@@ -49,7 +73,7 @@ class AdminUsers extends Authenticatable implements HasName
      * @var array
      */
     protected $fillable = [
-        'blocked', 'created_at', 'created_by_id', 'email', 'firstname', 'is_active', 'lastname', 'password', 'prefered_language', 'registration_token', 'reset_password_token', 'updated_at', 'updated_by_id', 'username'
+        'blocked', 'created_at', 'created_by_id', 'email', 'firstname', 'is_active', 'lastname', 'prefered_language', 'updated_at', 'updated_by_id', 'username', 'password','reset_password_token','remember_token'
     ];
 
     /**
@@ -58,7 +82,10 @@ class AdminUsers extends Authenticatable implements HasName
      * @var array
      */
     protected $hidden = [
-
+        'remember_token',
+        'password',
+        'reset_password_token',
+        'registration_token',
     ];
 
     /**
@@ -67,7 +94,21 @@ class AdminUsers extends Authenticatable implements HasName
      * @var array
      */
     protected $casts = [
-        'id' => 'int', 'blocked' => 'boolean', 'created_at' => 'datetime', 'created_by_id' => 'int', 'email' => 'string', 'firstname' => 'string', 'is_active' => 'boolean', 'lastname' => 'string', 'password' => 'string', 'prefered_language' => 'string', 'registration_token' => 'string', 'reset_password_token' => 'string', 'updated_at' => 'datetime', 'updated_by_id' => 'int', 'username' => 'string'
+        'id' => 'int',
+        'blocked' => 'boolean',
+        'created_at' => 'datetime',
+        'created_by_id' => 'int',
+        'email' => 'string',
+        'firstname' => 'string',
+        'is_active' => 'boolean',
+        'lastname' => 'string',
+        'password' => 'hashed',
+        'prefered_language' => 'string',
+        'registration_token' => 'string',
+        'reset_password_token' => 'string',
+        'updated_at' => 'datetime',
+        'updated_by_id' => 'int',
+        'username' => 'string'
     ];
 
     /**
@@ -84,15 +125,10 @@ class AdminUsers extends Authenticatable implements HasName
      *
      * @var boolean
      */
-    public $timestamps = false;
+    public $timestamps = true;
 
-    // Scopes...
-
-    // Functions ...
-
-    // Relations ...
     public function getFilamentName(): string
     {
-        return $this->getAttributeValue('username');
+        return $this->firstname.' '.$this->lastname;
     }
 }

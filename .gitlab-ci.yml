@@ -1,0 +1,110 @@
+stages:
+  - test
+  - build
+  - deploy
+
+test:
+  stage: test
+  services:
+    - mysql:latest
+  variables:
+    DB_HOST: mysql
+    DB_USERNAME: sail
+    MYSQL_DATABASE: testing
+    MYSQL_ROOT_PASSWORD: password
+    MYSQL_USER: sail
+    MYSQL_ROOT_HOST: mysql
+    MYSQL_PASSWORD: password
+    MYSQL_ALLOW_EMPTY_PASSWORD: 'yes'
+  image: docker-hub.sandstorm.de/docker-infrastructure/php-app/build:8.2-v2
+  cache:
+    key: cleema-app__composer
+    paths:
+      - .composer-cache
+  script:
+    - COMPOSER_CACHE_DIR=.composer-cache composer install --ignore-platform-req=ext-gd
+    # - vendor/bin/sail up -d --env=testing
+    - php artisan migrate --env=testing
+    # ⁄- php artisan db:seed --class=ShieldSeeder --env=testing
+    # - php artisan test
+    - vendor/bin/pest
+
+package_app_staging:
+  stage: build
+  image: docker-hub.sandstorm.de/docker-infrastructure/php-app/build:8.2-v2
+  needs:
+    - test
+  cache:
+    key: cleema__composer
+    paths:
+      - .composer-cache
+  script:
+    - COMPOSER_CACHE_DIR=.composer-cache composer install --no-dev --ignore-platform-req=ext-gd
+    - npm install
+    - npm run build
+
+    # replaced $CI_REGISTRY_IMAGE with $CI_REGISTRY/$CI_PROJECT_NAME because of invalid path/groupName (contains '.' -> 'cleema.app')
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE:staging || true
+    - docker build --cache-from $CI_REGISTRY_IMAGE:main -t $CI_REGISTRY_IMAGE:staging -f deployment/staging/Dockerfile .
+    - docker push $CI_REGISTRY_IMAGE:staging
+
+package_app_production:
+  stage: build
+  only:
+    - tags
+  image: docker-hub.sandstorm.de/docker-infrastructure/php-app/build:8.2-v2
+  needs:
+    - test
+  cache:
+    key: cleema__composer
+    paths:
+      - .composer-cache
+  script:
+    - COMPOSER_CACHE_DIR=.composer-cache composer install --no-dev --ignore-platform-req=ext-gd
+    - npm install
+    - npm run build
+
+    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+    - docker pull $CI_REGISTRY_IMAGE:production || true
+    - docker build --cache-from $CI_REGISTRY_IMAGE:production -t $CI_REGISTRY_IMAGE:production -f deployment/production/Dockerfile .
+    - docker push $CI_REGISTRY_IMAGE:production
+
+deploy_staging:
+  stage: deploy
+  when: manual
+  image:
+    name: bitnami/kubectl:1.15.0
+    entrypoint: [ "" ]
+  needs:
+    - package_app_staging
+    #- e2e_test
+  environment:
+    name: staging
+  script:
+    - export KUBECONFIG=$KUBECONFIG_K3S2021
+    - kubectl get namespace cleema-app-staging
+    - kubectl apply -f deployment/staging/database.yaml
+    - kubectl apply -f deployment/staging/app.yaml
+    # enforce a redeploy by changing the release identifier
+    - 'kubectl -n cleema-app-staging patch --type merge OneContainerOnePort app -p "{\"spec\":{\"releaseIdentifier\": \"$CI_JOB_ID\"}}"'
+
+deploy_production:
+  stage: deploy
+  only:
+    - tags
+  image:
+    name: bitnami/kubectl:1.15.0
+    entrypoint: [""]
+  needs:
+    - package_app_production
+    #- e2e_test
+  environment:
+    name: production
+  script:
+    - export KUBECONFIG=$KUBECONFIG_K3S2021
+    - kubectl get namespace cleema-app-production
+    - kubectl apply -f deployment/production/database.yaml
+    - kubectl apply -f deployment/production/app.yaml
+    # enforce a redeploy by changing the release identifier
+    - 'kubectl -n cleema-app-production patch --type merge OneContainerOnePort app -p "{\"spec\":{\"releaseIdentifier\": \"$CI_JOB_ID\"}}"'

@@ -38,6 +38,14 @@ return [
     'guards' => [
         'web' => [
             'driver' => 'session',
+            'provider' => 'adminUsers',
+        ],
+        'api' => [
+            'driver' => 'jwt',
+            'provider' => 'users',
+        ],
+        'localAuth' => [
+            'driver' => 'session',
             'provider' => 'users',
         ],
     ],
@@ -60,14 +68,14 @@ return [
     */
 
     'providers' => [
+        'adminUsers' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\AdminUsers::class,
+        ],
         'users' => [
             'driver' => 'eloquent',
             'model' => App\Models\UpUsers::class,
         ],
-        'admin_users' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\AdminUsers::class,
-        ]
 
         // 'users' => [
         //     'driver' => 'database',
@@ -96,7 +104,7 @@ return [
 
     'passwords' => [
         'users' => [
-            'provider' => 'users',
+            'provider' => 'adminUsers',
             'table' => 'password_reset_tokens',
             'expire' => 60,
             'throttle' => 60,
@@ -115,5 +123,7 @@ return [
     */
 
     'password_timeout' => 10800,
+
+    'iosLocalAccessToken' => env('IOS_LOCAL_ACCESS_TOKEN')
 
 ];

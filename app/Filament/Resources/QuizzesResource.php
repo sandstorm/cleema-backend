@@ -2,15 +2,26 @@
 
 namespace App\Filament\Resources;
 
+use App\Filament\Resources\Components\DateSelectors;
+use App\Filament\Resources\Components\LocaleSelector;
+use App\Filament\Resources\Components\QuizQuestionCreatorAndEditor;
 use App\Filament\Resources\QuizzesResource\Pages;
-use App\Filament\Resources\QuizzesResource\RelationManagers;
+use App\Filament\Resources\QuizzesResource\RelationManagers\ResponsesRelationManager;
+use App\Models\QuizQuestions;
 use App\Models\Quizzes;
+use Carbon\Carbon;
 use Filament\Forms;
+use Filament\Forms\Components\Actions\Action;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
+use Filament\Forms\Set;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class QuizzesResource extends Resource
@@ -23,23 +34,112 @@ class QuizzesResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('created_by_id')
-                    ->numeric(),
-                Forms\Components\TextInput::make('updated_by_id')
-                    ->numeric(),
-                Forms\Components\Textarea::make('question')
-                    ->columnSpanFull(),
-                Forms\Components\TextInput::make('correct_answer')
-                    ->maxLength(255),
-                Forms\Components\Textarea::make('explanation')
-                    ->columnSpanFull(),
-                Forms\Components\DateTimePicker::make('published_at'),
-                Forms\Components\TextInput::make('locale')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('uuid')
-                    ->label('UUID')
-                    ->maxLength(255),
-                Forms\Components\DatePicker::make('date'),
+                Forms\Components\Section::make()
+                    ->columns(6)
+                    ->schema([
+                        Section::make()
+                            ->columns(6)
+                            ->schema([
+                                Forms\Components\Select::make('quiz_question_id')
+                                    ->relationship('quizQuestion', 'question')
+                                    ->preload()
+                                    ->createOptionForm(QuizQuestionCreatorAndEditor::getModal(true))
+                                    ->editOptionForm(QuizQuestionCreatorAndEditor::getModal(true))
+                                    ->searchable()
+                                    ->columnSpan(6)
+                                    ->live()
+                                    ->required()
+                                    ->afterStateUpdated(function (Set $set, $state) {
+                                        $quizQuestion = QuizQuestions::where('id', '=', $state)->first();
+
+                                        if($quizQuestion != null) {
+                                            $set('answers', $quizQuestion->answers()->get()->toArray());
+                                            $set('correct_answer', $quizQuestion->correct_answer ?? ' ');
+                                            $set('explanation', $quizQuestion->explanation ?? ' ');
+                                        }
+                                    }),
+                                Forms\Components\Repeater::make('answers')
+                                    ->columnSpanFull()
+                                    ->grid(2)
+                                    ->defaultItems(2)
+                                    ->minItems(2)
+                                    // full alphabet
+                                    ->disabled()
+                                    ->maxItems(26)
+                                    ->addActionLabel('Add Answer')
+                                    ->formatStateUsing(function (Get $get) {
+                                        $quizQuestion = QuizQuestions::where('id', $get('quiz_question_id'))->get()->first();
+                                        if ($quizQuestion == null) return [];
+                                        return $quizQuestion->answers()->get();
+                                    })
+                                    ->itemLabel(function ($uuid, $component) {
+                                        $keys = array_keys($component->getState());
+                                        $index = array_search($uuid, $keys);
+                                        $alphabet = range('a', 'z');
+                                        return $alphabet[$index];
+                                    })
+                                    ->deleteAction(function (Action $action) {
+                                        $action->after(function (Get $get, Set $set) {
+                                            $answers = $get('answers');
+                                            $alphabet = range('a', 'z');
+                                            foreach (array_keys($answers) as $index => $key) {
+                                                $answers[$key]['option'] = $alphabet[$index];
+                                            }
+                                            $set('answers', $answers);
+                                        });
+                                    })
+                                    ->schema(
+                                        [
+                                            Forms\Components\Hidden::make('option')
+                                                ->live(),
+                                            /*
+                                             * we use a Hidden here because we if we use a TextInput and disable or hide it
+                                             * the state won't get sent to the db
+                                             * Since the Item Label already shows what option it is, we can use a Hidden
+                                             * But setting the state with `->state()` doesn't work because of issues during
+                                             * initialization and the option text below is required, we just update the
+                                             * option state there
+                                            */
+                                            Forms\Components\Textarea::make('text')
+                                                ->required()
+                                                ->afterStateUpdated(function (Get $get, Set $set, $component) {
+                                                    $componentStatePath = $component->getStatePath();
+                                                    $componentUUID = explode('.', $componentStatePath)[2];
+                                                    $answers = $get('../../answers');
+                                                    $alphabet = range('a', 'z');
+                                                    $optionLetter = $alphabet[array_search($componentUUID, array_keys($answers))];
+                                                    $set('option', $optionLetter);
+                                                })
+                                                ->live(),
+                                        ]),
+                                Forms\Components\Select::make('correct_answer')
+                                    ->disabled()
+                                    ->formatStateUsing(function (Get $get) {
+                                        return QuizQuestions::where('id', $get('quiz_question_id'))->pluck('correct_answer')->filter();
+                                    })
+                                    ->options(function (Get $get) {
+                                        $alphabet = range('a', 'z');
+                                        $answers = $get('answers');
+                                        $tmpOptions = array_slice($alphabet, 0, count($answers));
+                                        return array_combine(array_values($tmpOptions), array_values($tmpOptions));
+                                    })
+                                    ->native(false)
+                                    ->columnSpan(1),
+                                Forms\Components\Textarea::make('explanation')
+                                    ->disabled()
+                                    ->formatStateUsing(function (Get $get) {
+                                        return QuizQuestions::where('id', $get('quiz_question_id'))->pluck('explanation')->filter();
+                                    })
+                                    ->columnSpan(5),
+                            ]),
+                        Forms\Components\Section::make()
+                            ->columns(2)
+                            ->schema([
+                                DatePicker::make('date')
+                                    ->columnSpan(1)
+                                    ->default(date('Y-m-d')),
+                            ]),
+                    ]),
             ]);
     }
 
@@ -47,34 +147,33 @@ class QuizzesResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('created_by_id')
-                    ->numeric()
+                Tables\Columns\TextColumn::make('id')
+                    ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('updated_by_id')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('correct_answer')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
+                Tables\Columns\TextColumn::make('quizQuestion.question')
+                    ->label(__('Question'))
+                    ->searchable()
+                    ->sortable()
+                    ->wrap()
+                    ->lineClamp(2),
+                Tables\Columns\TextColumn::make('quizQuestion.locale')
+                    ->label(__('Locale'))
+                    ->searchable()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('published_at')
-                    ->dateTime()
+                Tables\Columns\TextColumn::make('quizQuestion.region.name')
+                    ->label(__('Region'))
+                    ->searchable()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('locale')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('uuid')
-                    ->label('UUID')
-                    ->searchable(),
                 Tables\Columns\TextColumn::make('date')
-                    ->date()
-                    ->sortable(),
+                    ->label(__('Publish Date'))
+                    ->searchable()
+                    ->sortable()
+                    ->formatStateUsing(function (Quizzes $quizzes) {
+                        return Carbon::make($quizzes->date)->toDateString();
+                    }),
             ])
+            ->defaultSort('date', 'desc')
             ->filters([
                 //
             ])
@@ -91,7 +190,7 @@ class QuizzesResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            ResponsesRelationManager::class,
         ];
     }
 

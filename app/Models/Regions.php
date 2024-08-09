@@ -2,7 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
  * @property int      $id
@@ -13,9 +17,33 @@ use Illuminate\Database\Eloquent\Model;
  * @property DateTime $updated_at
  * @property string   $name
  * @property string   $uuid
+ * @property boolean  $is_public
+ * @property boolean  $is_supraregional
  */
 class Regions extends Model
 {
+    use HasFactory;
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        self::creating(function ($region) {
+            $region->created_by_id = auth()->id();
+            $region->uuid = Str::uuid();
+            if (!$region->is_supraregional) {
+                $region->is_supraregional = false;
+            }
+        });
+
+        self::saving(function ($region) {
+            $region->updated_by_id = auth()->id();
+            if ($region->uuid == null) {
+                $region->uuid = Str::uuid();
+            }
+        });
+    }
+
     /**
      * The database table used by the model.
      *
@@ -36,16 +64,7 @@ class Regions extends Model
      * @var array
      */
     protected $fillable = [
-        'created_at', 'created_by_id', 'name', 'published_at', 'updated_at', 'updated_by_id', 'uuid'
-    ];
-
-    /**
-     * The attributes excluded from the model's JSON form.
-     *
-     * @var array
-     */
-    protected $hidden = [
-        
+        'created_at', 'created_by_id', 'name', 'published_at', 'updated_at', 'updated_by_id', 'uuid', 'is_public', 'is_supraregional'
     ];
 
     /**
@@ -54,7 +73,7 @@ class Regions extends Model
      * @var array
      */
     protected $casts = [
-        'id' => 'int', 'created_at' => 'datetime', 'created_by_id' => 'int', 'name' => 'string', 'published_at' => 'datetime', 'updated_at' => 'datetime', 'updated_by_id' => 'int', 'uuid' => 'string'
+        'id' => 'int', 'created_at' => 'datetime', 'created_by_id' => 'int', 'name' => 'string', 'published_at' => 'datetime', 'updated_at' => 'datetime', 'updated_by_id' => 'int', 'uuid' => 'string', 'is_public' => 'boolean', 'is_supraregional' => 'boolean'
     ];
 
     /**
@@ -67,15 +86,39 @@ class Regions extends Model
     ];
 
     /**
-     * Indicates if the model should be timestamped.
-     *
-     * @var boolean
+     * a region has multiple users within it --> one to many
+     * @return HasMany
      */
-    public $timestamps = false;
+    public function users ()
+    {
+        return $this->hasMany(UpUsers::class, 'region_id', 'id');
+    }
 
-    // Scopes...
+    /**
+     * a region has multiple challenges  --> one to many
+     * @return HasMany
+     */
+    public function challenges ()
+    {
+        return $this->hasMany(Challenges::class, 'region_id', 'id');
+    }
 
-    // Functions ...
+    /**
+     * a region has multiple offers --> one to many
+     * @return HasMany
+     */
+    public function offers ()
+    {
+        return $this->hasMany(Offers::class, 'region_id', 'id');
+    }
 
-    // Relations ...
+    public function projects ()
+    {
+        return $this->hasMany(Projects::class, 'region_id', 'id');
+    }
+
+    public function newsEntries ()
+    {
+        return $this->hasMany(NewsEntries::class, 'region_id', 'id');
+    }
 }

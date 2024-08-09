@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 /**
  * @property int      $id
@@ -24,9 +27,27 @@ use Illuminate\Database\Eloquent\Model;
  * @property boolean  $is_regional
  * @property Date     $valid_from
  * @property Date     $valid_until
+ * @property string   $url
+ * @property int      $region_id
  */
 class Offers extends Model
 {
+    use HasFactory;
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        self::creating(function ($offers) {
+            $offers->uuid = Str::uuid();
+            $offers->created_by_id = auth()->id();
+        });
+
+        self::saving(function ($offers) {
+            $offers->updated_by_id = auth()->id();
+        });
+    }
+
     /**
      * The database table used by the model.
      *
@@ -47,7 +68,13 @@ class Offers extends Model
      * @var array
      */
     protected $fillable = [
-        'created_at', 'created_by_id', 'description', 'discount', 'generic_voucher', 'individual_vouchers', 'is_regional', 'locale', 'published_at', 'redeem_interval', 'store_type', 'summary', 'title', 'updated_at', 'updated_by_id', 'uuid', 'valid_from', 'valid_until', 'views'
+        'created_at', 'created_by_id', 'description', 'discount', 'generic_voucher', 'individual_vouchers',
+        'is_regional', 'locale', 'published_at', 'redeem_interval', 'store_type', 'summary', 'title',
+        'updated_at', 'updated_by_id', 'url', 'uuid', 'valid_from', 'valid_until', 'views', 'region_id',
+    ];
+
+    protected $guarded = [
+        'uuid', 'created_by_id', 'updated_by_id'
     ];
 
     /**
@@ -56,7 +83,7 @@ class Offers extends Model
      * @var array
      */
     protected $hidden = [
-        
+
     ];
 
     /**
@@ -65,7 +92,27 @@ class Offers extends Model
      * @var array
      */
     protected $casts = [
-        'id' => 'int', 'created_at' => 'datetime', 'created_by_id' => 'int', 'description' => 'string', 'generic_voucher' => 'string', 'individual_vouchers' => 'string', 'is_regional' => 'boolean', 'locale' => 'string', 'published_at' => 'datetime', 'redeem_interval' => 'int', 'store_type' => 'string', 'summary' => 'string', 'title' => 'string', 'updated_at' => 'datetime', 'updated_by_id' => 'int', 'uuid' => 'string', 'valid_from' => 'date', 'valid_until' => 'date', 'views' => 'int'
+        'id' => 'int',
+        'discount' => 'int',
+        'created_at' => 'datetime',
+        'created_by_id' => 'int',
+        'description' => 'string',
+        'generic_voucher' => 'string',
+        'individual_vouchers' => 'string',
+        'is_regional' => 'boolean',
+        'locale' => 'string',
+        'published_at' => 'datetime',
+        'redeem_interval' => 'int',
+        'store_type' => 'string',
+        'summary' => 'string',
+        'title' => 'string',
+        'updated_at' => 'datetime',
+        'updated_by_id' => 'int',
+        'uuid' => 'string',
+        'valid_from' => 'date',
+        'valid_until' => 'date',
+        'views' => 'int',
+        'region_id' => 'int'
     ];
 
     /**
@@ -82,11 +129,35 @@ class Offers extends Model
      *
      * @var boolean
      */
-    public $timestamps = false;
+    public $timestamps = true;
 
-    // Scopes...
+    /**
+     * each offer belongs to a region
+     * @return BelongsTo
+     */
+    public function region ()
+    {
+        return $this->belongsTo(Regions::class, 'region_id', 'id');
+    }
 
-    // Functions ...
+    public function voucherRedemptions ()
+    {
+        return $this->hasMany(VoucherRedemptions::class, 'offer_id', 'id');
+    }
 
-    // Relations ...
+    public function location ()
+    {
+        return $this->belongsTo(Locations::class, 'location_id', 'id');
+    }
+
+    public function address ()
+    {
+        return $this->belongsTo(Addresses::class, 'address_id', 'id');
+    }
+
+    public function image ()
+    {
+        return $this->belongsTo(Files::class, 'image_id', 'id');
+    }
+
 }

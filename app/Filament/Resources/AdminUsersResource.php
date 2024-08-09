@@ -4,14 +4,14 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AdminUsersResource\Pages;
 use App\Filament\Resources\AdminUsersResource\RelationManagers;
+use App\Models\AdminRoles;
 use App\Models\AdminUsers;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Hash;
 
 class AdminUsersResource extends Resource
 {
@@ -23,26 +23,38 @@ class AdminUsersResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('created_by_id')
-                    ->numeric(),
-                Forms\Components\TextInput::make('updated_by_id')
-                    ->numeric(),
                 Forms\Components\TextInput::make('firstname')
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->required(),
                 Forms\Components\TextInput::make('lastname')
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->required(),
                 Forms\Components\TextInput::make('username')
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->required(),
                 Forms\Components\TextInput::make('email')
                     ->email()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->required(),
                 Forms\Components\TextInput::make('password')
                     ->password()
+                    ->dehydrateStateUsing(fn ($state) => Hash::make($state))
+                    ->dehydrated(fn ($state) => filled($state))
+                    ->required(fn (string $context): bool => $context === 'create')
                     ->maxLength(255),
+                Forms\Components\TextInput::make('prefered_language')
+                    ->maxLength(255)
+                    ->hidden()
+                    ->disabled(),
+                Forms\Components\Select::make('roles')
+                    ->relationship('roles', 'name')
+                    ->label('Role')
+                    ->preload()
+                    ->required()
+                    ->searchable()
+                    ->live(),
                 Forms\Components\Toggle::make('is_active'),
                 Forms\Components\Toggle::make('blocked'),
-                Forms\Components\TextInput::make('prefered_language')
-                    ->maxLength(255),
             ]);
     }
 
@@ -50,12 +62,6 @@ class AdminUsersResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('created_by_id')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('updated_by_id')
-                    ->numeric()
-                    ->sortable(),
                 Tables\Columns\TextColumn::make('firstname')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('lastname')
@@ -68,22 +74,13 @@ class AdminUsersResource extends Resource
                     ->boolean(),
                 Tables\Columns\IconColumn::make('blocked')
                     ->boolean(),
-                Tables\Columns\TextColumn::make('prefered_language')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

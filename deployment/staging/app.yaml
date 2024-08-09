@@ -1,0 +1,60 @@
+apiVersion: k8s.sandstorm.de/v1alpha1
+kind: OneContainerOnePort
+metadata:
+  namespace: cleema-app-staging
+  name: app
+spec:
+  appName: cleema-app-staging
+  description: ''
+
+  hostNames:
+    cleema-staging.cloud.sandstorm.de: [ ]
+
+  node: worker4
+  image: docker-hub.sandstorm.de/cleema-app/cleema-filament-backend:staging
+  port: 8081
+  # Set to false when a real DNS entry for staging/staging exists
+  stagingCertificates: false
+
+  env:
+    # in K8S, we are always behind a Load Balancer
+    TRUSTEDPROXY_PROXIES: '*'
+    APP_NAME: "Cleema - Staging"
+    APP_URL: https://cleema-staging.cloud.sandstorm.de
+    APP_ENV: production
+
+  extraPodEnvInK8sFormat:
+    - name: DB_PORT
+      value: "3306"
+    - name: DB_USERNAME
+      value: "$(DB_USER)"
+    - name: DB_DATABASE
+      value: "$(DB_NAME)"
+
+  envFromConfigMaps:
+    - db
+  envFromSecrets:
+    - db
+    - api-token
+    - mail-config
+    - app-key
+
+  #  httpBasicPasswordProtection:
+  #    enabled: true
+  #    secretName: basic-auth
+
+  #  healthChecks:
+  #    readinessProbe:
+  #      enabled: true
+
+  #    livenessProbe:
+  #      enabled: true
+
+  volumes:
+    - name: persistent
+      mountPath: /storage/app/
+
+  sso:
+    enabled: false
+
+  stopped: false

@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 /**
  * @property int      $id
@@ -22,6 +24,21 @@ use Illuminate\Database\Eloquent\Model;
  */
 class NewsEntries extends Model
 {
+    use HasFactory;
+    public static function boot(): void
+    {
+        parent::boot();
+
+        self::creating(function ($newsEntry) {
+            $newsEntry->uuid = Str::uuid();
+            $newsEntry->created_by_id = auth()->id();
+        });
+
+        self::saving(function ($newsEntry) {
+            $newsEntry->updated_by_id = auth()->id();
+        });
+    }
+
     /**
      * The database table used by the model.
      *
@@ -42,7 +59,11 @@ class NewsEntries extends Model
      * @var array
      */
     protected $fillable = [
-        'created_at', 'created_by_id', 'date', 'description', 'locale', 'published_at', 'teaser', 'title', 'type', 'updated_at', 'updated_by_id', 'uuid', 'views'
+        'created_at', 'date', 'description', 'locale', 'published_at', 'teaser', 'title', 'type', 'updated_at', 'views',
+    ];
+
+    protected $guarded = [
+        'uuid', 'created_by_id', 'updated_by_id'
     ];
 
     /**
@@ -51,7 +72,7 @@ class NewsEntries extends Model
      * @var array
      */
     protected $hidden = [
-        
+
     ];
 
     /**
@@ -77,11 +98,30 @@ class NewsEntries extends Model
      *
      * @var boolean
      */
-    public $timestamps = false;
+    public $timestamps = true;
 
-    // Scopes...
+    public function region()
+    {
+        return $this->belongsTo(Regions::class, 'region_id', 'id');
+    }
 
-    // Functions ...
+    public function tags()
+    {
+        return $this->belongsToMany(NewsTags::class, 'news_entries_tags_links', 'news_entry_id', 'news_tag_id');
+    }
 
-    // Relations ...
+    public function usersRead()
+    {
+        return $this->belongsToMany(UpUsers::class, 'news_entries_users_read_links', 'news_entry_id', 'user_id');
+    }
+
+    public function usersFavorited()
+    {
+        return $this->belongsToMany(UpUsers::class, 'up_users_favorited_news_links', 'news_entry_id', 'user_id');
+    }
+
+    public function image()
+    {
+        return $this->belongsTo(Files::class, 'image_id', 'id');
+    }
 }

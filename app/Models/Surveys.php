@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+use Illuminate\Testing\Fluent\Concerns\Has;
 
 /**
  * @property int      $id
@@ -23,6 +26,22 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Surveys extends Model
 {
+    use HasFactory;
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        self::creating(function ($surveys) {
+            $surveys->uuid = Str::uuid();
+            $surveys->created_by_id = auth()->id();
+        });
+
+        self::saving(function ($surveys) {
+            $surveys->updated_by_id = auth()->id();
+        });
+    }
+
     /**
      * The database table used by the model.
      *
@@ -52,7 +71,11 @@ class Surveys extends Model
      * @var array
      */
     protected $hidden = [
-        
+
+    ];
+
+    protected $guarded = [
+        'uuid', 'created_by_id', 'updated_by_id'
     ];
 
     /**
@@ -78,11 +101,12 @@ class Surveys extends Model
      *
      * @var boolean
      */
-    public $timestamps = false;
+    public $timestamps = true;
 
-    // Scopes...
+    public function participants ()
+    {
+        return $this->belongsToMany(UpUsers::class, 'surveys_participants_links', 'survey_id', 'user_id');
+    }
 
-    // Functions ...
-
-    // Relations ...
+    //TODO evaluated by
 }

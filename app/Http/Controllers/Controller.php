@@ -9,4 +9,16 @@ use Illuminate\Routing\Controller as BaseController;
 class Controller extends BaseController
 {
     use AuthorizesRequests, ValidatesRequests;
+
+    static function getApiErrorMessage(string $message){
+        return [
+            'data' => null,
+            'error' => [
+                'details'=>(object)[],
+                'message' => $message,
+                'name' => 'ApplicationError',
+                'status'=>400,
+            ],
+        ];
+    }
 }

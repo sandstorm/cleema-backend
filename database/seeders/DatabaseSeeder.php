@@ -2,9 +2,13 @@
 
 namespace Database\Seeders;
 
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use DB;
 use Illuminate\Database\Seeder;
 
+/**
+ * Default seeder from laravel, is called when `php artisan db:seed` is called
+ * Instead of writing seeding code here, create a seperate seeder class and call them here.
+ */
 class DatabaseSeeder extends Seeder
 {
     /**
@@ -12,11 +16,10 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // \App\Models\User::factory(10)->create();
-
-        // \App\Models\User::factory()->create([
-        //     'name' => 'Test User',
-        //     'email' => 'test@example.com',
-        // ]);
+        $path = 'DBDumps/cleema.sql';
+        $file = file_get_contents($path);
+        if($file != null) {
+            DB::unprepared($file);
+        }
     }
 }

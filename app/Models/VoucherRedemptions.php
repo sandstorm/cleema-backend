@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class VoucherRedemptions extends Model
 {
+    use HasFactory;
+
     /**
      * The database table used by the model.
      *
@@ -36,7 +39,7 @@ class VoucherRedemptions extends Model
      * @var array
      */
     protected $fillable = [
-        'anonymous_user_id', 'code', 'created_at', 'created_by_id', 'redeemed_at', 'updated_at', 'updated_by_id'
+        'anonymous_user_id', 'code', 'created_at', 'created_by_id', 'redeemed_at', 'updated_at', 'updated_by_id','redeemer_id', 'offer_id'
     ];
 
     /**
@@ -45,7 +48,7 @@ class VoucherRedemptions extends Model
      * @var array
      */
     protected $hidden = [
-        
+
     ];
 
     /**
@@ -54,7 +57,7 @@ class VoucherRedemptions extends Model
      * @var array
      */
     protected $casts = [
-        'id' => 'int', 'anonymous_user_id' => 'string', 'code' => 'string', 'created_at' => 'datetime', 'created_by_id' => 'int', 'redeemed_at' => 'date', 'updated_at' => 'datetime', 'updated_by_id' => 'int'
+        'id' => 'int', 'anonymous_user_id' => 'string', 'code' => 'string', 'created_at' => 'datetime', 'created_by_id' => 'int', 'redeemed_at' => 'date', 'updated_at' => 'datetime', 'updated_by_id' => 'int','redeemer_id'=>'int', 'offer_id' => 'int'
     ];
 
     /**
@@ -73,9 +76,13 @@ class VoucherRedemptions extends Model
      */
     public $timestamps = false;
 
-    // Scopes...
+    public function redeemer ()
+    {
+        return $this->belongsTo(UpUsers::class, 'redeemer_id', 'id');
+    }
 
-    // Functions ...
-
-    // Relations ...
+    public function offer ()
+    {
+        return $this->belongsTo(Offers::class, 'offer_id', 'id');
+    }
 }

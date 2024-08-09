@@ -16,4 +16,9 @@ class EditAdminUsers extends EditRecord
             Actions\DeleteAction::make(),
         ];
     }
+
+    protected function getSavedNotification(): ?\Filament\Notifications\Notification
+    {
+        return \Filament\Notifications\Notification::make()->title('Admin User updated');
+    }
 }

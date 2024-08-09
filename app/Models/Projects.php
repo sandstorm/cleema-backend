@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 /**
  * @property int      $id
@@ -21,9 +23,26 @@ use Illuminate\Database\Eloquent\Model;
  * @property DateTime $start_date
  * @property DateTime $updated_at
  * @property boolean  $trophy_processed
+ * @property int      $goal_involvement_id
  */
 class Projects extends Model
 {
+    use HasFactory;
+
+    public static function boot(): void
+    {
+        parent::boot();
+
+        self::creating(function ($projects) {
+            $projects->uuid = Str::uuid();
+            $projects->created_by_id = auth()->id();
+        });
+
+        self::saving(function ($projects) {
+            $projects->updated_by_id = auth()->id();
+        });
+    }
+
     /**
      * The database table used by the model.
      *
@@ -44,7 +63,7 @@ class Projects extends Model
      * @var array
      */
     protected $fillable = [
-        'conclusion', 'created_at', 'created_by_id', 'description', 'goal_type', 'locale', 'phase', 'published_at', 'start_date', 'summary', 'title', 'trophy_processed', 'updated_at', 'updated_by_id', 'uuid'
+        'conclusion', 'created_at', 'created_by_id', 'description', 'goal_type', 'locale', 'phase', 'published_at', 'start_date', 'summary', 'title', 'trophy_processed', 'updated_at', 'updated_by_id', 'uuid', 'goal_involvement_id'
     ];
 
     /**
@@ -53,7 +72,7 @@ class Projects extends Model
      * @var array
      */
     protected $hidden = [
-        
+
     ];
 
     /**
@@ -62,7 +81,7 @@ class Projects extends Model
      * @var array
      */
     protected $casts = [
-        'id' => 'int', 'conclusion' => 'string', 'created_at' => 'datetime', 'created_by_id' => 'int', 'description' => 'string', 'goal_type' => 'string', 'locale' => 'string', 'phase' => 'string', 'published_at' => 'datetime', 'start_date' => 'datetime', 'summary' => 'string', 'title' => 'string', 'trophy_processed' => 'boolean', 'updated_at' => 'datetime', 'updated_by_id' => 'int', 'uuid' => 'string'
+        'id' => 'int', 'conclusion' => 'string', 'created_at' => 'datetime', 'created_by_id' => 'int', 'description' => 'string', 'goal_type' => 'string', 'locale' => 'string', 'phase' => 'string', 'published_at' => 'datetime', 'start_date' => 'datetime', 'summary' => 'string', 'title' => 'string', 'trophy_processed' => 'boolean', 'updated_at' => 'datetime', 'updated_by_id' => 'int', 'uuid' => 'string', 'goal_involvement_id' => 'int'
     ];
 
     /**
@@ -79,11 +98,55 @@ class Projects extends Model
      *
      * @var boolean
      */
-    public $timestamps = false;
+    public $timestamps = true;
 
-    // Scopes...
+    public function usersFavorited()
+    {
+        return $this->belongsToMany(UpUsers::class, 'projects_users_favorited_links', 'project_id', 'user_id');
+    }
 
-    // Functions ...
+    public function usersJoined()
+    {
+        return $this->belongsToMany(UpUsers::class, 'projects_users_joined_links', 'project_id', 'user_id');
+    }
 
-    // Relations ...
+    public function relatedProjects()
+    {
+        return $this->belongsToMany(Projects::class, 'projects_related_projects_links', 'project_id', 'inv_project_id');
+    }
+
+    public function region ()
+    {
+        return $this->belongsTo(Regions::class, 'region_id', 'id');
+    }
+
+    public function partner ()
+    {
+        return $this->belongsTo(Partners::class, 'partner_id', 'id');
+    }
+
+    public function location ()
+    {
+        return $this->belongsTo(Locations::class, 'location_id', 'id');
+    }
+
+    public function goalInvolvement ()
+    {
+        return $this->belongsTo(ProjectsGoalInvolvements::class, 'goal_involvement_id', 'id');
+    }
+
+    public function goalFunding ()
+    {
+        return $this->belongsTo(ProjectGoalFundings::class, 'goal_funding_id', 'id');
+    }
+
+    public function image ()
+    {
+        return $this->belongsTo(Files::class, 'image_id', 'id');
+    }
+
+    public function teaserImage ()
+    {
+        return $this->belongsTo(Files::class, 'teaser_image_id', 'id');
+    }
 }

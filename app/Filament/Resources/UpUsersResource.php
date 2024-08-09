@@ -10,8 +10,7 @@ use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\Hash;
 
 class UpUsersResource extends Resource
 {
@@ -23,31 +22,71 @@ class UpUsersResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\TextInput::make('created_by_id')
-                    ->numeric(),
-                Forms\Components\TextInput::make('updated_by_id')
-                    ->numeric(),
                 Forms\Components\TextInput::make('username')
                     ->maxLength(255),
+                Forms\Components\Toggle::make('blocked'),
                 Forms\Components\TextInput::make('email')
                     ->email()
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('provider')
-                    ->maxLength(255),
-                Forms\Components\TextInput::make('password')
-                    ->password()
+                    ->label('Email-address')
                     ->maxLength(255),
                 Forms\Components\Toggle::make('confirmed'),
-                Forms\Components\Toggle::make('blocked'),
-                Forms\Components\TextInput::make('referral_code')
+                Forms\Components\TextInput::make('password')
+                    ->password()
+                    ->dehydrateStateUsing(fn ($state) => Hash::make($state))
+                    ->dehydrated(fn ($state) => filled($state))
+                    ->required(fn (string $context): bool => $context === 'create')
                     ->maxLength(255),
                 Forms\Components\TextInput::make('uuid')
-                    ->label('UUID')
-                    ->maxLength(255),
+                    ->disabled()
+                    ->maxLength(255)
+                    ->uuid(),
+                Forms\Components\TextInput::make('referral_code')
+                    ->disabled(),
                 Forms\Components\Toggle::make('accepts_surveys'),
-                Forms\Components\Toggle::make('is_supporter'),
-                Forms\Components\TextInput::make('referral_count')
-                    ->numeric(),
+                Forms\Components\Fieldset::make('Avatar')
+                    ->relationship('avatar')
+                    ->schema([
+                        Forms\Components\TextInput::make('id')
+                        ->numeric()
+                        ->disabled()
+                        ->label('Avatar Id'),
+                    ]),
+                Forms\Components\Fieldset::make('Quiz-Streak')
+                    ->relationship('quizStreak')
+                    ->schema([
+                        Forms\Components\TextInput::make('correct_answer_streak')
+                            ->numeric()
+                            ->disabled()
+                            ->label('Correct Answer Streak'),
+                        Forms\Components\TextInput::make('participation_streak')
+                            ->numeric()
+                            ->label('Participation Streak')
+                            ->registerListeners([
+
+                            ])
+                            ->disabled(),
+                    ]),
+                Forms\Components\Fieldset::make('Region')
+                    ->relationship('region')
+                    ->schema([
+                        Forms\Components\TextInput::make('id')
+                            ->numeric()
+                            ->disabled()
+                            ->label('Region Id'),
+                        Forms\Components\TextInput::make('name')
+                            ->label('Region Name')
+                            ->disabled(),
+                    ]),
+                Forms\Components\Fieldset::make('Role')
+                    ->relationship('role')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->disabled()
+                            ->label('Role Name'),
+                        Forms\Components\TextInput::make('description')
+                            ->label('Role Description')
+                            ->disabled(),
+                    ]),
             ]);
     }
 
@@ -55,48 +94,21 @@ class UpUsersResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('created_by_id')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('updated_by_id')
-                    ->numeric()
-                    ->sortable(),
+                Tables\Columns\TextColumn::make('id')
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('username')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('email')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('provider')
-                    ->searchable(),
                 Tables\Columns\IconColumn::make('confirmed')
                     ->boolean(),
-                Tables\Columns\IconColumn::make('blocked')
-                    ->boolean(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('referral_code')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('uuid')
-                    ->label('UUID')
-                    ->searchable(),
-                Tables\Columns\IconColumn::make('accepts_surveys')
-                    ->boolean(),
-                Tables\Columns\IconColumn::make('is_supporter')
-                    ->boolean(),
-                Tables\Columns\TextColumn::make('referral_count')
-                    ->numeric()
-                    ->sortable(),
             ])
             ->filters([
                 //
             ])
             ->actions([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -108,7 +120,17 @@ class UpUsersResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\FollowsRelationManager::class,
+            RelationManagers\TrophiesRelationManager::class,
+            RelationManagers\QuizResponsesRelationManager::class,
+            RelationManagers\FavoritedNewsEntriesRelationManager::class,
+            RelationManagers\AuthoredChallengesRelationManager::class,
+            RelationManagers\ChallengesJoinedRelationManager::class,
+            RelationManagers\ProjectsFavoritedRelationManager::class,
+            RelationManagers\ProjectsJoinedRelationManager::class,
+            RelationManagers\EnteredSurveysRelationManager::class,
+            RelationManagers\ReadNewsEntriesRelationManager::class,
+            RelationManagers\VoucherRedemptionsRelationManager::class,
         ];
     }
 

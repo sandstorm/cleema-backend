@@ -1,0 +1,33 @@
+{
+    # enable if something goes wrong
+    # debug
+
+    log default {
+        output stdout
+        format json
+    }
+
+    # Trusted proxies are needed inside our K8S setup, to ensure
+    # Caddy passes on trusted proxies headers. => this is needed for proper HTTPS support inside laravel,
+    # otherwise various things break (sadly).
+    servers {
+        trusted_proxies static private_ranges
+    }
+
+}
+
+http://:8081 {
+
+    handle_path /dynamic-images/* {
+        reverse_proxy {$IMAGOR_HOST_FROM_CADDY}
+    }
+    # Needed for local-dev
+    header /dynamic-images/* Access-Control-Allow-Origin "http://127.0.0.1:8082"
+
+
+    root * /public/
+    php_fastcgi unix//tmp/php8-fpm.sock
+    file_server
+    log
+}
+
