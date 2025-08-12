@@ -1,3 +1,9 @@
+
+> [!WARNING]
+> This repository hasb been archived.
+> You can find the current cleema code on [Open Code](https://gitlab.opencode.de/OC000011068002/cleema)
+
+
 # Cleema BackEnd Laravel / filament
 ## Requirements
 **Mandatory**
